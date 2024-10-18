@@ -9,9 +9,9 @@ from tkinter import Label
 # Initial parameters for the rectangles
 y = -3.5  # Position at the bottom of the screen (Y)
 rectangle_z = 0.0    # Initial depth position of the center rectangle
-rectangle_speed = 0.1  # Initial speed of depth movement
-height = 1.8  # Initial height of the rectangles
-depth = 1.0    # Initial depth of the rectangles
+rectangle_speed = 0.1  # Initial speed of depth movement  # Initial speed of depth movement
+height = 0.5  # Set initial height to be minimal  # Initial height of the rectangles
+depth = 1.5  # Set depth to be slightly longer    # Initial depth of the rectangles
 
 # Left and right rectangles positions
 left_rectangle_z = -5.0
@@ -22,6 +22,35 @@ right_rectangle_x = 3.0
 # Delay for left and right rectangles to start moving
 left_start_delay = 3.0  # Seconds
 right_start_delay = 2.0  # Seconds
+
+# Boundaries for the left and right movement
+left_boundary = -3.5
+right_boundary = 3.5
+
+# Walls for the game boundaries
+def draw_walls():
+    """Draw left and right walls extending along the Z-axis."""
+    glBegin(GL_QUADS)
+
+    # Left wall
+    glColor3f(0.8, 0.1, 0.1)  # Red color for the wall
+    glVertex3f(left_boundary - 0.5, -5.0, 20.0)
+    glVertex3f(left_boundary, -5.0, 20.0)
+    glVertex3f(left_boundary, 5.0, -50.0)
+    glVertex3f(left_boundary - 0.5, 5.0, -50.0)
+
+    # Right wall
+    glColor3f(0.8, 0.1, 0.1)  # Red color for the wall
+    glVertex3f(right_boundary, -5.0, 20.0)
+    glVertex3f(right_boundary + 0.5, -5.0, 20.0)
+    glVertex3f(right_boundary + 0.5, 5.0, -50.0)
+    glVertex3f(right_boundary, 5.0, -50.0)
+
+    glEnd()
+
+# Minimum distance between the rectangles
+min_distance_between_rectangles = 2.0
+min_distance_from_center_rectangle = 2.0
 
 # Initialize font for text rendering
 pygame.freetype.init()
@@ -95,6 +124,8 @@ def display_command_window():
         "L     - Move Left Rectangle Right",
         "N     - Move Right Rectangle Left",
         "M     - Move Right Rectangle Right",
+        "K     - Increase View Height (Y)",
+        "I     - Decrease View Height (Y)",
         "ESC   - Quit"
     ]
     
@@ -108,7 +139,7 @@ def display_command_window():
 
 def main():
     global rectangle_z, left_rectangle_z, right_rectangle_z, rectangle_speed, height, depth
-    global left_rectangle_x, right_rectangle_x
+    global left_rectangle_x, right_rectangle_x, y
 
     pygame.init()
 
@@ -117,7 +148,7 @@ def main():
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
     pygame.display.set_caption('OpenGL Window with Parameters')
 
-    glClearColor(0.1, 0.1, 0.1, 1.0)  # Background color for OpenGL (dark gray)
+    glClearColor(0.2, 0.2, 0.6, 1.0)  # Background color for OpenGL (blueish)
     gluPerspective(45, (display[0] / display[1]), 0.1, 50.0)  # Perspective
     glTranslatef(0.0, 0.0, -5)  # Camera position
 
@@ -150,17 +181,30 @@ def main():
         if keys[K_d]:
             depth = max(0.1, depth - 0.1)  # Decrease depth, minimum 0.1
         if keys[K_j]:
-            left_rectangle_x -= 0.1  # Move left rectangle to the left
+            new_left_x = max(left_boundary, left_rectangle_x - 0.1)  # Calculate new position for left rectangle
+            if new_left_x < right_rectangle_x - min_distance_between_rectangles and new_left_x < 0 - min_distance_from_center_rectangle:
+                left_rectangle_x = new_left_x  # Update position if no collision
         if keys[K_l]:
-            left_rectangle_x += 0.1  # Move left rectangle to the right
+            new_left_x = min(right_boundary, left_rectangle_x + 0.1)  # Calculate new position for left rectangle
+            if new_left_x < right_rectangle_x - min_distance_between_rectangles and new_left_x < 0 - min_distance_from_center_rectangle:
+                left_rectangle_x = new_left_x  # Update position if no collision
         if keys[K_n]:
-            right_rectangle_x -= 0.1  # Move right rectangle to the left
+            new_right_x = max(left_boundary, right_rectangle_x - 0.1)  # Calculate new position for right rectangle
+            if new_right_x > left_rectangle_x + min_distance_between_rectangles and new_right_x > 0 + min_distance_from_center_rectangle:
+                right_rectangle_x = new_right_x  # Update position if no collision
         if keys[K_m]:
-            right_rectangle_x += 0.1  # Move right rectangle to the right
+            new_right_x = min(right_boundary, right_rectangle_x + 0.1)  # Calculate new position for right rectangle
+            if new_right_x > left_rectangle_x + min_distance_between_rectangles and new_right_x > 0 + min_distance_from_center_rectangle:
+                right_rectangle_x = new_right_x  # Update position if no collision
+        if keys[K_k]:
+            y += 0.1  # Increase Y position to simulate increasing view height
+        if keys[K_i]:
+            y -= 0.1  # Decrease Y position to simulate decreasing view height
 
         elapsed_time += clock.get_time() / 1000.0  # Add elapsed time in seconds
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        draw_walls()
 
         # Update the depth positions
         rectangle_z -= rectangle_speed
