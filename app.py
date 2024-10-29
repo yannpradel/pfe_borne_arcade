@@ -9,6 +9,7 @@ class EndlessRunnerGame(Entity):
     def __init__(self):
         super().__init__()
         self.initialize_sliders()
+        self.platform_offset_y = 1.25
         self.initialize_game_entities()
         self.setup_camera()
         
@@ -37,7 +38,7 @@ class EndlessRunnerGame(Entity):
         # Initialize game entities like walls and player
         self.left_wall = Entity(model='cube', texture='white_cube', color=color.red, position=(-5.0, 0, -15), scale=(0.5, 10, 100))
         self.right_wall = Entity(model='cube', texture='white_cube', color=color.red, position=(5.0, 0, -15), scale=(0.5, 10, 100))
-        self.player = Entity(model='cube', texture='whatsapp', color=color.yellow, position=(0, self.y_position_slider.value + 1.25, 40.0), scale=(0.5, 0.5, 0.5))
+        self.player = Entity(model='cube', texture='whatsapp', color=color.yellow, position=(0, self.y_position_slider.value + self.platform_offset_y, 40.0), scale=(0.5, 0.5, 0.5))
         self.player.jumping = False
         self.player.velocity_y = 0  # Vertical velocity for player
 
@@ -55,12 +56,12 @@ class EndlessRunnerGame(Entity):
         right_limit = self.right_wall.x - self.right_wall.scale_x / 2
         print(f'Left wall x: {self.left_wall.x}, Right wall x: {self.right_wall.x}, Platform position: {position}')
 
-        # Adjust position to prevent exceeding boundaries
+        # Adjust scale to prevent exceeding boundaries
         if position[0] - scale[0] / 2 < left_limit:
-            position = (left_limit + scale[0] / 2, position[1], position[2])
+            scale = (2 * (position[0] - left_limit), scale[1], scale[2])
         if position[0] + scale[0] / 2 > right_limit:
-            position = (right_limit - scale[0] / 2, position[1], position[2])
-        print(f'Adjusted Platform position: {position}')
+            scale = (2 * (right_limit - position[0]), scale[1], scale[2])
+        print(f'Adjusted Platform scale: {scale}')
         
         # Create a platform entity
         platform = Entity(model='cube', texture='brick', color=color, position=position, scale=scale)
@@ -115,7 +116,7 @@ class EndlessRunnerGame(Entity):
                     on_platform = platform
                     break
             if on_platform:
-                self.player.y = on_platform.y + on_platform.scale_y / 2 + 0.25
+                self.player.y = on_platform.y + on_platform.scale_y / 2
                 self.player.velocity_y = 0
             else:
                 self.player.velocity_y += self.gravity * dt
@@ -123,9 +124,9 @@ class EndlessRunnerGame(Entity):
         else:
             self.player.velocity_y += self.gravity * dt
             self.player.y += self.player.velocity_y * dt
-            if self.player.y <= self.y + self.height / 2 + 0.25 and self.player.velocity_y < 0:
+            if self.player.y <= self.y + self.height / 2 + self.platform_offset_y and self.player.velocity_y < 0:
                 self.player.jumping = False
-                self.player.y = self.y + self.height / 2 + 0.25
+                self.player.y = self.y + self.height / 2
                 self.player.velocity_y = 0
 
     def update_phase_logic(self):
@@ -134,7 +135,7 @@ class EndlessRunnerGame(Entity):
         if self.current_phase == 'single_platform' and not self.phase_executed:
             # Create a very long and wide platform for initial movement
             self.create_platform(position=(0, self.y, self.spawn_distance), scale=(20, 2, 50), color=color.green)
-            self.player.y = self.y + 1.25  # Position player on top of the platform
+            self.player.y = self.y + self.platform_offset_y  # Position player on top of the platform
             self.phase_executed = True
         elif self.current_phase == 'multiple_platforms' and not self.phase_executed:
             # Clear existing platforms
