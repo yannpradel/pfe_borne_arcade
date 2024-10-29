@@ -18,29 +18,26 @@ class EndlessRunnerGame(Entity):
         self.elapsed_time = 0
         self.player_speed = 5.0
         self.gravity = -9.8  # Gravity acceleration
+        self.platforms = []  # Store all platforms
+        self.phase_executed = False  # Track if platforms for the phase have been sent
 
     def initialize_sliders(self):
         # Initialize UI sliders for controlling game parameters
-        self.left_rectangle_x_slider = Slider(min=-5.0, max=5.0, default=-3.30, position=(-0.7, -0.15 * 0.7), text='Left Rectangle X', scale=0.7, dynamic=True)
-        self.right_rectangle_x_slider = Slider(min=-5.0, max=5.0, default=3.30, position=(-0.7, -0.25 * 0.7), text='Right Rectangle X', scale=0.7, dynamic=True)
-        self.y_position_slider = Slider(min=-5.0, max=5.0, default=-5.0, position=(-0.7, -0.35 * 0.7), text='Y Position', scale=0.7, dynamic=True)
+        self.spawn_distance_slider = Slider(min=20.0, max=60.0, default=50.0, position=(-0.7, 0.45 * 0.7), text='Spawn Distance', scale=0.7, dynamic=True)
         self.speed_slider = Slider(min=0.01, max=1.0, default=0.15, position=(-0.7, 0.35 * 0.7), text='Speed', scale=0.7, dynamic=True)
         self.height_slider = Slider(min=0.1, max=10.0, default=0.5, position=(-0.7, 0.25 * 0.7), text='Height', scale=0.7, dynamic=True)
         self.depth_slider = Slider(min=0.1, max=10.0, default=8.0, position=(-0.7, 0.15 * 0.7), text='Depth', scale=0.7, dynamic=True)
         self.width_slider = Slider(min=0.1, max=10.0, default=2.5, position=(-0.7, 0.05 * 0.7), text='Width', scale=0.7, dynamic=True)
         self.reset_distance_slider = Slider(min=10.0, max=50.0, default=10.0, position=(-0.7, -0.05 * 0.7), text='Reset Distance', scale=0.7, dynamic=True)
-        self.spawn_distance_slider = Slider(min=20.0, max=60.0, default=50.0, position=(-0.7, 0.45 * 0.7), text='Spawn Distance', scale=0.7, dynamic=True)
-        self.left_wall_position_slider = Slider(min=-5.0, max=5.0, default=-5.0, position=(-0.7, -0.45 * 0.7), text='Left Wall Position', scale=0.7, dynamic=True)
-        self.right_wall_position_slider = Slider(min=-5.0, max=5.0, default=5.0, position=(-0.7, -0.55 * 0.7), text='Right Wall Position', scale=0.7, dynamic=True)
+        self.y_position_slider = Slider(min=-5.0, max=5.0, default=-5.0, position=(-0.7, -0.35 * 0.7), text='Y Position', scale=0.7, dynamic=True)
+        self.left_wall_position_slider = Slider(min=-10.0, max=10.0, default=-5.0, position=(-0.7, -0.45 * 0.7), text='Left Wall Position', scale=0.7, dynamic=True)
+        self.right_wall_position_slider = Slider(min=-10.0, max=10.0, default=5.0, position=(-0.7, -0.55 * 0.7), text='Right Wall Position', scale=0.7, dynamic=True)
 
     def initialize_game_entities(self):
-        # Initialize game entities like walls, rectangles, and player
-        self.center_rectangle = Entity(model='cube', texture='brick', color=color.green, position=(0, -5.0, 50.0), scale=(2.5, 0.5, 8.0))
-        self.left_rectangle = Entity(model='cube', texture='brick', color=color.azure, position=(-3.30, -5.0, 45.0), scale=(2.5, 0.5, 8.0))
-        self.right_rectangle = Entity(model='cube', texture='brick', color=color.orange, position=(3.30, -5.0, 45.0), scale=(2.5, 0.5, 8.0))
+        # Initialize game entities like walls and player
         self.left_wall = Entity(model='cube', texture='white_cube', color=color.red, position=(-5.0, 0, -15), scale=(0.5, 10, 100))
         self.right_wall = Entity(model='cube', texture='white_cube', color=color.red, position=(5.0, 0, -15), scale=(0.5, 10, 100))
-        self.player = Entity(model='cube', texture='whatsapp', color=color.yellow, position=(0, -4.75, 40.0), scale=(0.5, 0.5, 0.5))
+        self.player = Entity(model='cube', texture='whatsapp', color=color.yellow, position=(0, self.y_position_slider.value + 1.25, 40.0), scale=(0.5, 0.5, 0.5))
         self.player.jumping = False
         self.player.velocity_y = 0  # Vertical velocity for player
 
@@ -52,19 +49,33 @@ class EndlessRunnerGame(Entity):
         camera.position = (0, 0, -20)
         camera.rotation = (0, 0, 0)
 
+    def create_platform(self, position, scale, color=color.white):
+        # Ensure platforms do not exceed wall boundaries
+        left_limit = self.left_wall.x + self.left_wall.scale_x / 2
+        right_limit = self.right_wall.x - self.right_wall.scale_x / 2
+        print(f'Left wall x: {self.left_wall.x}, Right wall x: {self.right_wall.x}, Platform position: {position}')
+
+        # Adjust position to prevent exceeding boundaries
+        if position[0] - scale[0] / 2 < left_limit:
+            position = (left_limit + scale[0] / 2, position[1], position[2])
+        if position[0] + scale[0] / 2 > right_limit:
+            position = (right_limit - scale[0] / 2, position[1], position[2])
+        print(f'Adjusted Platform position: {position}')
+        
+        # Create a platform entity
+        platform = Entity(model='cube', texture='brick', color=color, position=position, scale=scale)
+        self.platforms.append(platform)
+
     def update(self):
         self.phase_text.text = f'Phase: {self.current_phase}'
         self.update_parameters_from_sliders()
         self.handle_player_movement()
         self.apply_gravity()
         self.update_phase_logic()
-        self.update_rectangle_positions()
-        self.update_game_entities()
+        self.update_platform_positions()
 
     def update_parameters_from_sliders(self):
         # Update game parameters based on slider values
-        self.left_rectangle_x = self.left_rectangle_x_slider.value
-        self.right_rectangle_x = self.right_rectangle_x_slider.value
         self.y = self.y_position_slider.value
         self.rectangle_speed = self.speed_slider.value
         self.height = self.height_slider.value
@@ -97,16 +108,14 @@ class EndlessRunnerGame(Entity):
         # Apply gravity to the player
         dt = time.dt
         if not self.player.jumping:
-            on_platform = (
-                (self.center_rectangle.z - self.depth / 2 <= self.player.z <= self.center_rectangle.z + self.depth / 2 and
-                 self.center_rectangle.x - self.width / 2 <= self.player.x <= self.center_rectangle.x + self.width / 2) or
-                (self.left_rectangle.z - self.depth / 2 <= self.player.z <= self.left_rectangle.z + self.depth / 2 and
-                 self.left_rectangle.x - self.width / 2 <= self.player.x <= self.left_rectangle.x + self.width / 2) or
-                (self.right_rectangle.z - self.depth / 2 <= self.player.z <= self.right_rectangle.z + self.depth / 2 and
-                 self.right_rectangle.x - self.width / 2 <= self.player.x <= self.right_rectangle.x + self.width / 2)
-            )
+            on_platform = None
+            for platform in self.platforms:
+                if (platform.z - platform.scale_z / 2 <= self.player.z <= platform.z + platform.scale_z / 2 and
+                        platform.x - platform.scale_x / 2 <= self.player.x <= platform.x + platform.scale_x / 2):
+                    on_platform = platform
+                    break
             if on_platform:
-                self.player.y = self.y + self.height / 2 + 0.25
+                self.player.y = on_platform.y + on_platform.scale_y / 2 + 0.25
                 self.player.velocity_y = 0
             else:
                 self.player.velocity_y += self.gravity * dt
@@ -114,7 +123,7 @@ class EndlessRunnerGame(Entity):
         else:
             self.player.velocity_y += self.gravity * dt
             self.player.y += self.player.velocity_y * dt
-            if self.player.y <= self.y + self.height / 2 + 0.25:
+            if self.player.y <= self.y + self.height / 2 + 0.25 and self.player.velocity_y < 0:
                 self.player.jumping = False
                 self.player.y = self.y + self.height / 2 + 0.25
                 self.player.velocity_y = 0
@@ -122,42 +131,36 @@ class EndlessRunnerGame(Entity):
     def update_phase_logic(self):
         # Handle phase transitions
         current_time = time.time()
-        if self.current_phase == 'single_platform' and current_time - self.phase_start_time > 5:
-            self.current_phase = 'multiple_platforms'
-            self.phase_start_time = current_time
+        if self.current_phase == 'single_platform' and not self.phase_executed:
+            # Create a very long and wide platform for initial movement
+            self.create_platform(position=(0, self.y, self.spawn_distance), scale=(20, 2, 50), color=color.green)
+            self.player.y = self.y + 1.25  # Position player on top of the platform
+            self.phase_executed = True
+        elif self.current_phase == 'multiple_platforms' and not self.phase_executed:
+            # Clear existing platforms
+            for platform in self.platforms:
+                destroy(platform)
+            self.platforms.clear()
+            # Create three small platforms: left, middle, right
+            self.create_platform(position=(-3.3, self.y, self.spawn_distance), scale=(1, self.height, self.depth), color=color.azure)
+            self.create_platform(position=(0, self.y, self.spawn_distance), scale=(1, self.height, self.depth), color=color.yellow)
+            self.create_platform(position=(3.3, self.y, self.spawn_distance), scale=(1, self.height, self.depth), color=color.orange)
+            self.phase_executed = True
 
-    def update_rectangle_positions(self):
-        # Update the positions of rectangles based on the game phase
-        dt = time.dt
-        self.elapsed_time += dt
+        # Update to next phase if platforms are no longer in view
         if self.current_phase == 'single_platform':
-            self.center_rectangle.z -= self.rectangle_speed * 0.2
-            self.left_rectangle.z -= self.rectangle_speed * 0.2
-            self.right_rectangle.z -= self.rectangle_speed * 0.2
-        elif self.current_phase == 'multiple_platforms':
-            self.center_rectangle.z -= self.rectangle_speed
-            if self.elapsed_time >= 3.0:
-                self.left_rectangle.z -= self.rectangle_speed
-            if self.elapsed_time >= 2.0:
-                self.right_rectangle.z -= self.rectangle_speed
-            self.reset_rectangles()
+            for platform in self.platforms:
+                if platform.z < -30:  # Assuming -30 is out of view
+                    self.current_phase = 'multiple_platforms'
+                    self.phase_start_time = current_time
+                    self.phase_executed = False
+                    break
 
-    def reset_rectangles(self):
-        # Reset rectangles if they go beyond the reset distance
-        if self.center_rectangle.z < -self.reset_distance:
-            self.center_rectangle.z = self.spawn_distance
-        if self.left_rectangle.z < -self.reset_distance:
-            self.left_rectangle.z = self.spawn_distance - 5
-        if self.right_rectangle.z < -self.reset_distance:
-            self.right_rectangle.z = self.spawn_distance - 5
-
-    def update_game_entities(self):
-        # Update game entities' positions and scales based on slider values
-        self.center_rectangle.position = (0, self.y, self.center_rectangle.z)
-        self.left_rectangle.position = (self.left_rectangle_x, self.y, self.left_rectangle.z)
-        self.right_rectangle.position = (self.right_rectangle_x, self.y, self.right_rectangle.z)
-        for rectangle in [self.center_rectangle, self.left_rectangle, self.right_rectangle]:
-            rectangle.scale = (self.width, self.height, self.depth)
+    def update_platform_positions(self):
+        # Update the positions of platforms based on the game phase
+        dt = time.dt * 20  # Increase the speed of platform movement
+        for platform in self.platforms:
+            platform.z -= self.rectangle_speed * dt
 
 if __name__ == '__main__':
     app = Ursina()
