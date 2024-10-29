@@ -130,7 +130,18 @@ class EndlessRunnerGame(Entity):
 
         # Ensure player stays above the platform
         if not self.player.jumping:
-            self.player.y = self.y + self.height / 2 + 0.25
+            on_platform = (
+                (self.center_rectangle.z - self.depth / 2 <= self.player.z <= self.center_rectangle.z + self.depth / 2 and
+                 self.center_rectangle.x - self.width / 2 <= self.player.x <= self.center_rectangle.x + self.width / 2) or
+                (self.left_rectangle.z - self.depth / 2 <= self.player.z <= self.left_rectangle.z + self.depth / 2 and
+                 self.left_rectangle.x - self.width / 2 <= self.player.x <= self.left_rectangle.x + self.width / 2) or
+                (self.right_rectangle.z - self.depth / 2 <= self.player.z <= self.right_rectangle.z + self.depth / 2 and
+                 self.right_rectangle.x - self.width / 2 <= self.player.x <= self.right_rectangle.x + self.width / 2)
+            )
+            if on_platform:
+                self.player.y = self.y + self.height / 2 + 0.25
+            else:
+                self.player.y -= 9.8 * dt  # Gravity effect
 
         # Update positions based on phase
         if self.current_phase == 'single_platform':
