@@ -33,6 +33,8 @@ class EndlessRunnerGame(Entity):
         self.y_position_slider = Slider(min=-5.0, max=5.0, default=-5.0, position=(-0.7, -0.35 * 0.7), text='Y Position', scale=0.7, dynamic=True)
         self.left_wall_position_slider = Slider(min=-10.0, max=10.0, default=-5.0, position=(-0.7, -0.45 * 0.7), text='Left Wall Position', scale=0.7, dynamic=True)
         self.right_wall_position_slider = Slider(min=-10.0, max=10.0, default=5.0, position=(-0.7, -0.55 * 0.7), text='Right Wall Position', scale=0.7, dynamic=True)
+        self.camera_z_position_slider = Slider(min=-50.0, max=-10.0, default=-30.0, position=(-0.7, -0.65 * 0.7), text='Camera Z Position', scale=0.7, dynamic=True)
+        self.camera_y_position_slider = Slider(min=-10.0, max=10.0, default=0.0, position=(-0.7, -0.70 * 0.7), text='Camera Y Position', scale=0.7, dynamic=True)
 
     def initialize_game_entities(self):
         # Initialize game entities like walls and player
@@ -86,6 +88,8 @@ class EndlessRunnerGame(Entity):
         self.left_wall.x = self.left_wall_position_slider.value
         self.right_wall.x = self.right_wall_position_slider.value
         self.width = self.width_slider.value
+        camera.z = self.camera_z_position_slider.value
+        camera.y = self.camera_y_position_slider.value
 
     def handle_player_movement(self):
         dt = time.dt
